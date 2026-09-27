@@ -3,57 +3,60 @@
 </p>
 
 <p align="center">
-  <img alt="Go 1.22+" src="https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go&logoColor=white">
-  <img alt="Java 21+" src="https://img.shields.io/badge/Java-21%2B-E76F00?logo=openjdk&logoColor=white">
-  <img alt="Local-first" src="https://img.shields.io/badge/Run-fully%20local-22C55E">
-  <img alt="Quantization" src="https://img.shields.io/badge/Weights-FP32%20%7C%20INT8-8B5CF6">
+  <img alt="Go 1.22 or newer" src="https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go&logoColor=white">
+  <img alt="Java 21 or newer" src="https://img.shields.io/badge/Java-21%2B-E76F00?logo=openjdk&logoColor=white">
+  <img alt="Runs on your computer" src="https://img.shields.io/badge/Run-fully%20local-22C55E">
+  <img alt="FP32 and INT8 model weights" src="https://img.shields.io/badge/Weights-FP32%20%7C%20INT8-8B5CF6">
 </p>
 
-<p align="center"><strong>Train a small Transformer. Compress its weights. Measure the tradeoffs.</strong></p>
+<p align="center"><strong>Train a small language model, make smaller copies, and compare the results.</strong></p>
 
-MiniLLM Quantization Engine is a local learning project that connects a small Transformer training pipeline with two INT8 compression paths. It produces real checkpoints and compares their storage size and next-token quality on the same evaluation text.
+MiniLLM is a learning project. It reads text from your computer and trains a small Transformer. A Transformer is a type of model that learns patterns in text and predicts what token (a piece of a word or a whole word) may come next. The project then makes two compressed versions of the model and compares their size and prediction quality.
 
 > [!NOTE]
-> This is an educational, small-model system—not a production LLM or a general-purpose document understanding model. Results depend on the amount and quality of your text. QAT may not outperform PTQ; the benchmark measures what happened for that run.
+> This project is for learning and small experiments. It is not a production AI system or a general-purpose document reader. Results depend on your training text. The compressed versions may not predict text as well as the original.
 
-## ✨ What it does
+## What the project does
 
-| Stage | What happens |
+| Step | In simple terms |
 | --- | --- |
-| **Prepare** | Reads local text and supported documents; tokenizes the extracted text. |
-| **Train** | Java trains a small causal Transformer and exports an FP32 checkpoint. |
-| **PTQ** | Go converts trained weights to signed INT8 without further training. |
-| **QAT** | Java continues training with fake-quantized weights; Go writes the resulting weights as an INT8 checkpoint. |
-| **Compare** | Go evaluates FP32, PTQ, and QAT and prints a comparison plus a JSON report. |
+| Prepare text | Reads local files, extracts text where supported, and turns text into tokens the model can use. |
+| Train | Java trains the model and saves its weights as an FP32 checkpoint. A checkpoint is a file that stores a model so it can be used later. FP32 stores weights as 32-bit numbers. |
+| Compress with PTQ | Go converts the trained weights to INT8 numbers without more training. PTQ means post-training quantization. |
+| Tune with QAT | Java trains another copy while simulating INT8 weights. Go saves that copy in INT8 format. QAT means quantization-aware training. |
+| Compare | Go checks the file size and next-token prediction quality of the original and both compressed copies. |
 
-<p align="center"><img src="image/pipeline-strip.svg" alt="MiniLLM quantization workflow" width="100%"></p>
+INT8 uses 8-bit numbers, so model weight files can be smaller. Smaller files do not always mean faster predictions. This project measures the results instead of assuming them.
 
-## 🚀 Quick start
+<p align="center"><img src="image/pipeline-strip.svg" alt="MiniLLM workflow: prepare text, train a model, compress it, and compare results" width="100%"></p>
+
+## Get started
 
 ### Requirements
 
 - Go 1.22 or newer
 - Java 21 or newer
 - Maven
-- For document extraction: Poppler (`pdftotext`) for PDFs and LibreOffice for Office formats
-- For image OCR: Tesseract
-- Optional desktop chooser: Zenity (multi-select) or KDialog (single-select)
+- For PDF text: Poppler (`pdftotext`)
+- For Office files: LibreOffice
+- For text in images: Tesseract
+- Optional file chooser: Zenity or KDialog
 
-On Ubuntu/Debian, the optional extraction tools can be installed with:
+On Ubuntu or Debian, install the optional document and image tools with:
 
 ```bash
 sudo apt install poppler-utils libreoffice tesseract-ocr zenity
 ```
 
-Start the guided local workflow:
+Start the guided workflow:
 
 ```bash
 ./start.sh
 ```
 
-The launcher explains the workflow, then opens a local file chooser when Zenity or KDialog is available. Select several files with Ctrl-click in Zenity. If no chooser is installed, it asks for a path in the terminal. Only local paths are passed to the pipeline; no upload or account is involved.
+The launcher asks you to choose local files. If Zenity or KDialog is installed, it opens a file chooser. Otherwise, enter a file path in the terminal. Your files stay on your computer; the project does not upload them.
 
-Or pass files and folders directly:
+You can also give it file paths directly:
 
 ```bash
 ./start.sh run \
@@ -65,26 +68,27 @@ Or pass files and folders directly:
   --windows-per-epoch 256
 ```
 
-`--data` may be repeated. Directories are scanned recursively in sorted order. By default, output goes to `models/runs/<first-input-name>/`; use `--output-dir PATH` to choose a different location. The pipeline saves normalized text, vocabulary, token IDs, all three model checkpoints, and `benchmark.json` there.
+Use `--data` more than once to include multiple files. A folder is read recursively. By default, results are saved under `models/runs/<first-input-name>/`. Set `--output-dir PATH` to choose another folder. The output includes prepared text, the vocabulary, token IDs, three model checkpoints, and `benchmark.json`.
 
-### Supported inputs
+### Files you can use
 
-- UTF-8 text and source-like files (including `.txt`, `.md`, and HTML)
-- PDF files with an extractable text layer (`pdftotext`)
+- Text and code files, including `.txt`, `.md`, and HTML
+- PDFs that contain selectable text (requires `pdftotext`)
 - Office documents supported by LibreOffice
-- Images supported by Tesseract OCR (`.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp`, `.webp`)
-- Audio/video only when a same-name `.txt`, `.srt`, or `.vtt` transcript exists beside the media file
+- Images with text (requires Tesseract): `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp`, and `.webp`
+- Audio or video files with a same-name `.txt`, `.srt`, or `.vtt` transcript beside them
 
-Scanned/image-only PDFs do not have a text layer; this version does not OCR PDF pages automatically. Image OCR extracts recognized writing only—it does not understand objects, scenes, or image meaning. Low resolution, rotation, small print, contrast, and OCR language settings affect the result. If a selected file yields no text, check the extractor dependency and inspect the generated `tokenized/corpus.txt` before trusting the run.
+Scanned PDFs are not read in this version. Tesseract can recognize writing in images, but it cannot describe objects or scenes. Image quality, rotation, font size, and contrast can affect recognition. If a file seems to be skipped, check that its required tool is installed and review `tokenized/corpus.txt` in the output folder.
 
-## 🎛️ CLI commands
+## Commands
+
+See available commands and options:
 
 ```bash
 ./start.sh help
-./start.sh test
 ```
 
-Quantize a compatible FP32 checkpoint:
+Make an INT8 copy of an existing FP32 checkpoint with PTQ:
 
 ```bash
 ./start.sh ptq --input models/exported/model.json \
@@ -92,7 +96,7 @@ Quantize a compatible FP32 checkpoint:
   --scheme per-channel
 ```
 
-Run QAT from a compatible FP32 checkpoint and the matching tokenized training data:
+Run QAT using the original checkpoint and its matching tokenized training data:
 
 ```bash
 ./start.sh qat --input models/exported/model.json \
@@ -102,7 +106,7 @@ Run QAT from a compatible FP32 checkpoint and the matching tokenized training da
   --epochs 2 --windows-per-epoch 256
 ```
 
-Benchmark all three versions on held-out text:
+Compare the original and compressed checkpoints on text that was kept out of training:
 
 ```bash
 ./start.sh benchmark \
@@ -114,36 +118,40 @@ Benchmark all three versions on held-out text:
   --report models/quantized/benchmark.json
 ```
 
-Run Go and Java test suites:
+Run the Go and Java test suites with:
 
 ```bash
 ./start.sh test
 ```
 
-## 📊 What the benchmark reports
+## Reading the benchmark
+
+The benchmark reports:
 
 - Checkpoint file size
-- Next-token perplexity on the supplied evaluation text
-- Measured token throughput
-- Sampled peak Go heap
-- Estimated stored-weight memory
+- Perplexity, a measure of how well the model predicts the next token (lower is better)
+- Measured tokens processed per second
+- Sampled peak Go memory use
+- Estimated memory used to store model weights
 
-Give `--eval` a held-out corpus whose text is represented by the model vocabulary. Without `--eval`, the end-to-end workflow evaluates on the training corpus, which checks pipeline operation but does not measure generalization. The benchmark warns on small evaluation samples; a handful of tokens cannot support a reliable quality claim.
+Use a separate, held-out text file with `--eval` for a useful quality comparison. If you do not provide one, the workflow checks the training text instead. That confirms the pipeline ran, but does not show how well the model handles new text. Very small evaluation files make results less reliable.
 
-INT8 matrix and embedding payloads remain packed during Go inference. This implementation scales weight values during projection and still uses float64 activations and accumulators; it is not a fused integer kernel and does not promise faster inference. INT8 primarily demonstrates reduced checkpoint and stored-weight size here.
+The Go program keeps INT8 weights packed in memory, but converts values while making predictions. Its activations and calculation totals use 64-bit numbers. It does not use a specialized, fast INT8 calculation engine, so an INT8 model may be slower even though its weight file is smaller.
 
-## 🧠 Training time and corpus size
+## Training time and text size
 
-The trainer uses sliding causal windows. `--windows-per-epoch 0` (the default) processes all available windows each epoch. Long corpora can therefore take a while, and current progress is printed periodically rather than for every window. Set a positive limit such as `256` to cap the number of training windows per epoch. More epochs cannot replace missing examples; use varied training text and a separate held-out evaluation file.
+Training reads the text in overlapping sections called windows. By default, each training round uses all available windows. Large text collections can take a long time. Set `--windows-per-epoch` to a positive number, such as `256`, to limit the windows used in each round. A value of `0` means use all windows.
 
-## 🧩 How the code is split
+More training rounds cannot replace missing examples. Use varied text for training and a separate file for evaluation.
 
-- **Go** — input preparation, checkpoint validation, PTQ, QAT orchestration, INT8 inference, and benchmark CLI.
-- **Java** — Transformer implementation, optimizer, training loop, FP32 checkpoint export, and QAT fine-tuning forward path.
+## How the code is organized
 
-More detail: [Go guide](go/README.md) · [Java guide](java/README.md) · [Architecture](docs/ARCHITECTURE.md) · [Project explanation](PROJECT_EXPLANATION.md) · [Current status](STATUS.md) · [Checkpoint artifacts](models/README.md)
+- **Go** prepares text, checks checkpoints, creates the PTQ model, coordinates QAT, runs predictions, and compares results.
+- **Java** implements and trains the Transformer, saves the FP32 checkpoint, and runs the QAT training step.
 
-## 🎨 Project visuals
+More detail: [Go guide](go/README.md) · [Java guide](java/README.md) · [Architecture](docs/ARCHITECTURE.md) · [Project explanation](PROJECT_EXPLANATION.md) · [Current status](STATUS.md) · [Checkpoint files](models/README.md)
+
+## Project artwork
 
 <p align="center">
   <img src="image/tagline.svg" alt="Compress weights. Measure quality. Run locally." width="100%">
