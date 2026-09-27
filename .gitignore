@@ -27,3 +27,6 @@ models/quantized/*
 
 # Generated end-to-end training and benchmark runs
 models/runs/
+
+# Data and binary outputs
+data/
