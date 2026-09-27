@@ -30,3 +30,8 @@ models/runs/
 
 # Data and binary outputs
 data/
+
+# Model weights and run artifacts
+models/exported/
+models/quantized/
+models/runs/
