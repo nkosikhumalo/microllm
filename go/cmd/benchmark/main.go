@@ -180,7 +180,10 @@ func main() {
 		fpMetrics.WeightMemoryMB, ptqMetrics.WeightMemoryMB, qatMetrics.WeightMemoryMB,
 	)
 	fmt.Println(benchmarkPanelStyle.Render(comparison))
-	fmt.Println(benchmarkMutedStyle.Render(fmt.Sprintf("Scored %d sequences. Quantized matrices stay INT8 in memory; activations and accumulators use float64.", report.EvalLines)))
+	fmt.Println(benchmarkMutedStyle.Render(fmt.Sprintf("Scored %d sequences and %d next-token predictions. Quantized matrices stay INT8 in memory; activations and accumulators use float64.", report.EvalLines, fpMetrics.Tokens)))
+	if fpMetrics.Tokens < 1000 || report.EvalLines < 20 {
+		fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("Small evaluation sample: treat perplexity as a pipeline check, not a quality claim. Use a larger held-out corpus."))
+	}
 	if *reportPath != "" {
 		encoded, err := json.MarshalIndent(report, "", "  ")
 		if err != nil {
