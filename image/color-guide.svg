@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="72" viewBox="0 0 880 72" role="img" aria-label="MiniLLM Quantization Engine colors">
+  <rect width="880" height="72" fill="#f8fafc" rx="10" stroke="#e2e8f0"/>
+  <rect x="24" y="18" width="18" height="36" rx="4" fill="#00ADD8"/>
+  <text x="52" y="32" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Go #00ADD8</text>
+  <text x="52" y="50" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#64748b">quantize · calibrate · benchmark</text>
+  <rect x="340" y="18" width="18" height="36" rx="4" fill="#E76F00"/>
+  <text x="368" y="32" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Java #E76F00</text>
+  <text x="368" y="50" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#64748b">optional source-model trainer</text>
+  <rect x="650" y="18" width="18" height="36" rx="4" fill="#64748B"/>
+  <text x="678" y="32" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Artifacts #64748B</text>
+  <text x="678" y="50" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#64748b">FP32 + INT8 checkpoints</text>
+</svg>

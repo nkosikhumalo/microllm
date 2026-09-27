@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="104" viewBox="0 0 880 104" role="img" aria-label="MiniLLM Quantization Engine">
+  <rect width="880" height="104" fill="#0f172a" rx="12"/>
+  <text x="36" y="48" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="35" font-weight="800">
+    <tspan fill="#00ADD8">MiniLLM</tspan><tspan fill="#f8fafc"> Quantization Engine</tspan>
+  </text>
+  <text x="38" y="78" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" fill="#94a3b8">Validated FP32 checkpoints → compact INT8 weights → measured quality tradeoffs</text>
+</svg>

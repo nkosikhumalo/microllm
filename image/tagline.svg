@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="56" viewBox="0 0 880 56" role="img" aria-label="Measure the tradeoff">
+  <rect width="880" height="56" fill="#0f172a" rx="10"/>
+  <text x="440" y="35" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="18" font-weight="800" letter-spacing="1">
+    <tspan fill="#00ADD8">COMPRESS WEIGHTS.</tspan><tspan fill="#f8fafc"> MEASURE QUALITY.</tspan><tspan fill="#94a3b8"> RUN LOCALLY.</tspan>
+  </text>
+</svg>
