@@ -1,85 +1,150 @@
-# MiniLLM + Quantization Engine
+<p align="center">
+  <img src="image/title-banner.svg" alt="MiniLLM Quantization Engine" width="100%">
+</p>
 
-One local system for training a small Transformer, compressing its checkpoints, and measuring the quality/size tradeoff. It has two quantization paths: post-training quantization (PTQ) and quantization-aware training (QAT).
+<p align="center">
+  <img alt="Go 1.22+" src="https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go&logoColor=white">
+  <img alt="Java 21+" src="https://img.shields.io/badge/Java-21%2B-E76F00?logo=openjdk&logoColor=white">
+  <img alt="Local-first" src="https://img.shields.io/badge/Run-fully%20local-22C55E">
+  <img alt="Quantization" src="https://img.shields.io/badge/Weights-FP32%20%7C%20INT8-8B5CF6">
+</p>
 
-## System flow
+<p align="center"><strong>Train a small Transformer. Compress its weights. Measure the tradeoffs.</strong></p>
 
-```text
-text corpus → tokenizer → Java causal trainer → FP32 checkpoint
-                                             ├─ PTQ → PTQ INT8 checkpoint
-                                             └─ fake-quant fine-tuning → QAT INT8 checkpoint
-FP32 + PTQ + QAT checkpoints → held-out benchmark → JSON + terminal comparison
-```
+MiniLLM Quantization Engine is a local learning project that connects a small Transformer training pipeline with two INT8 compression paths. It produces real checkpoints and compares their storage size and next-token quality on the same evaluation text.
 
-The source model is trained in Java. Go validates the shared checkpoint, implements PTQ and dequantization, orchestrates QAT with the Java trainer, and benchmarks all three model variants.
+> [!NOTE]
+> This is an educational, small-model system—not a production LLM or a general-purpose document understanding model. Results depend on the amount and quality of your text. QAT may not outperform PTQ; the benchmark measures what happened for that run.
 
-## Quick start
+## ✨ What it does
 
-Requirements: Go 1.22+, Java 21+, and Maven. The end-to-end command accepts a plain UTF-8 text file or a directory containing `.txt` files; it prepares tokens and runs training, PTQ, QAT, and benchmarking in sequence.
-
-```bash
-# Interactive: prompts for the dataset path and optional held-out text
-./start.sh
-
-# Or provide paths directly
-./start.sh run --data /path/to/my-corpus.txt --epochs 100 --qat-epochs 2
-
-# Better evaluation: provide a separate held-out text file
-./start.sh run --data /path/to/train.txt --eval /path/to/heldout.txt
-```
-
-Artifacts are written under `models/runs/<dataset-name>/`: tokenized data, FP32, PTQ INT8, QAT INT8, and `benchmark.json`. At completion, the launcher prints the exact paths to both compressed checkpoints and the report. The dataset path may be relative to the directory where `start.sh` is invoked. For a directory input, `.txt` files are read in sorted order. Without `--eval`, the benchmark scores the training corpus, so that run is an integration check rather than a generalization measurement.
-
-The lower-level commands remain available:
-
-```bash
-# PTQ: quantize an existing checkpoint without training
-./start.sh ptq --input ../models/exported/model.json \
-  --output ../models/quantized/model.ptq.int8.json --scheme per-channel
-
-# QAT: load that checkpoint, fine-tune with fake-quantized weights, then emit INT8
-./start.sh qat --input ../models/exported/model.json \
-  --tokens ../data/tokenized/tokens.json --vocab ../data/tokenized/vocab.json \
-  --output ../models/quantized/model.qat.int8.json --epochs 2
-
-# Compare all three on the same held-out text, one sequence per line
-./start.sh benchmark --fp32 ../models/exported/model.json \
-  --ptq ../models/quantized/model.ptq.int8.json \
-  --qat ../models/quantized/model.qat.int8.json \
-  --eval ../data/eval/heldout.txt --vocab ../data/tokenized/vocab.json \
-  --report ../models/quantized/benchmark.json
-```
-
-For `run`, dataset and evaluation paths are relative to the caller’s current directory. Other low-level command flags are interpreted from the `go/` directory. `./start.sh` with no arguments prompts for a dataset and runs training, PTQ, QAT, and benchmarking. Use `./start.sh ptq` for per-channel PTQ of an existing checkpoint. `./start.sh test` runs Go and Java tests.
-
-To train a source model from scratch, tokenize a plain text corpus and use the Java trainer:
-
-```bash
-./scripts/tokenize.sh
-./scripts/train.sh --epochs 100 --val-fraction 0.1 --patience 10
-```
-
-## PTQ and QAT
-
-PTQ uses symmetric signed INT8 weights with a zero point of zero. Per-tensor mode uses one scale per tensor; per-channel mode uses one scale per first-dimension channel. Optional calibration stores observed activation ranges, but activation quantization is not implemented.
-
-QAT imports the FP32 checkpoint into the Java model, continues training on causal text windows, and fake-quantizes weights during forward passes. The straight-through estimator sends gradients to the underlying FP32 weights. The resulting fine-tuned weights are then quantized using the same PTQ encoder. QAT artifacts record their method and epoch count in checkpoint metadata.
-
-## Benchmark and current limits
-
-The benchmark compares file size, next-token perplexity, tokens/second, peak Go heap, and dequantized weight size. Use a held-out dataset; a training corpus is only useful as an integration smoke test.
-
-INT8 checkpoints are currently dequantized to float64 before inference. The engine demonstrates checkpoint compression and quality effects; integer matrix kernels, activation quantization, and INT8 inference speedups are not implemented. Its input format is the project’s version 1 JSON export (`format: "microllm"`); ONNX, GGUF, and arbitrary Hugging Face checkpoints are not supported.
-
-## Main code
-
-| Path | Role |
+| Stage | What happens |
 | --- | --- |
-| `go/cmd/quantize` | PTQ and optional calibration |
-| `go/cmd/qat` | Checkpoint bridge, Java QAT run, final INT8 export |
-| `go/cmd/benchmark` | FP32/PTQ/QAT evaluation and JSON report |
-| `go/internal/quantization` | PTQ, dequantization, checkpoint format and Java bridge |
-| `java/.../model/Transformer.java` | Shared Transformer training and fake-quantized forward path |
-| `java/.../train/Trainer.java` | Causal training and QAT fine-tuning loop |
+| **Prepare** | Reads local text and supported documents; tokenizes the extracted text. |
+| **Train** | Java trains a small causal Transformer and exports an FP32 checkpoint. |
+| **PTQ** | Go converts trained weights to signed INT8 without further training. |
+| **QAT** | Java continues training with fake-quantized weights; Go writes the resulting weights as an INT8 checkpoint. |
+| **Compare** | Go evaluates FP32, PTQ, and QAT and prints a comparison plus a JSON report. |
 
-See [Go commands](go/README.md), [architecture](docs/ARCHITECTURE.md), and [status](STATUS.md).
+<p align="center"><img src="image/pipeline-strip.svg" alt="MiniLLM quantization workflow" width="100%"></p>
+
+## 🚀 Quick start
+
+### Requirements
+
+- Go 1.22 or newer
+- Java 21 or newer
+- Maven
+- For document extraction: Poppler (`pdftotext`) for PDFs and LibreOffice for Office formats
+- For image OCR: Tesseract
+- Optional desktop chooser: Zenity (multi-select) or KDialog (single-select)
+
+On Ubuntu/Debian, the optional extraction tools can be installed with:
+
+```bash
+sudo apt install poppler-utils libreoffice tesseract-ocr zenity
+```
+
+Start the guided local workflow:
+
+```bash
+./start.sh
+```
+
+The launcher explains the workflow, then opens a local file chooser when Zenity or KDialog is available. Select several files with Ctrl-click in Zenity. If no chooser is installed, it asks for a path in the terminal. Only local paths are passed to the pipeline; no upload or account is involved.
+
+Or pass files and folders directly:
+
+```bash
+./start.sh run \
+  --data ./data/raw/train.txt \
+  --data ./data/raw/notes.md \
+  --eval ./data/eval/heldout.txt \
+  --epochs 100 \
+  --qat-epochs 2 \
+  --windows-per-epoch 256
+```
+
+`--data` may be repeated. Directories are scanned recursively in sorted order. By default, output goes to `models/runs/<first-input-name>/`; use `--output-dir PATH` to choose a different location. The pipeline saves normalized text, vocabulary, token IDs, all three model checkpoints, and `benchmark.json` there.
+
+### Supported inputs
+
+- UTF-8 text and source-like files (including `.txt`, `.md`, and HTML)
+- PDF files with an extractable text layer (`pdftotext`)
+- Office documents supported by LibreOffice
+- Images supported by Tesseract OCR (`.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.bmp`, `.webp`)
+- Audio/video only when a same-name `.txt`, `.srt`, or `.vtt` transcript exists beside the media file
+
+Scanned/image-only PDFs do not have a text layer; this version does not OCR PDF pages automatically. Image OCR extracts recognized writing only—it does not understand objects, scenes, or image meaning. Low resolution, rotation, small print, contrast, and OCR language settings affect the result. If a selected file yields no text, check the extractor dependency and inspect the generated `tokenized/corpus.txt` before trusting the run.
+
+## 🎛️ CLI commands
+
+```bash
+./start.sh help
+./start.sh test
+```
+
+Quantize a compatible FP32 checkpoint:
+
+```bash
+./start.sh ptq --input models/exported/model.json \
+  --output models/quantized/model.ptq.int8.json \
+  --scheme per-channel
+```
+
+Run QAT from a compatible FP32 checkpoint and the matching tokenized training data:
+
+```bash
+./start.sh qat --input models/exported/model.json \
+  --tokens data/tokenized/tokens.json \
+  --vocab data/tokenized/vocab.json \
+  --output models/quantized/model.qat.int8.json \
+  --epochs 2 --windows-per-epoch 256
+```
+
+Benchmark all three versions on held-out text:
+
+```bash
+./start.sh benchmark \
+  --fp32 models/exported/model.json \
+  --ptq models/quantized/model.ptq.int8.json \
+  --qat models/quantized/model.qat.int8.json \
+  --eval data/eval/heldout.txt \
+  --vocab data/tokenized/vocab.json \
+  --report models/quantized/benchmark.json
+```
+
+Run Go and Java test suites:
+
+```bash
+./start.sh test
+```
+
+## 📊 What the benchmark reports
+
+- Checkpoint file size
+- Next-token perplexity on the supplied evaluation text
+- Measured token throughput
+- Sampled peak Go heap
+- Estimated stored-weight memory
+
+Give `--eval` a held-out corpus whose text is represented by the model vocabulary. Without `--eval`, the end-to-end workflow evaluates on the training corpus, which checks pipeline operation but does not measure generalization. The benchmark warns on small evaluation samples; a handful of tokens cannot support a reliable quality claim.
+
+INT8 matrix and embedding payloads remain packed during Go inference. This implementation scales weight values during projection and still uses float64 activations and accumulators; it is not a fused integer kernel and does not promise faster inference. INT8 primarily demonstrates reduced checkpoint and stored-weight size here.
+
+## 🧠 Training time and corpus size
+
+The trainer uses sliding causal windows. `--windows-per-epoch 0` (the default) processes all available windows each epoch. Long corpora can therefore take a while, and current progress is printed periodically rather than for every window. Set a positive limit such as `256` to cap the number of training windows per epoch. More epochs cannot replace missing examples; use varied training text and a separate held-out evaluation file.
+
+## 🧩 How the code is split
+
+- **Go** — input preparation, checkpoint validation, PTQ, QAT orchestration, INT8 inference, and benchmark CLI.
+- **Java** — Transformer implementation, optimizer, training loop, FP32 checkpoint export, and QAT fine-tuning forward path.
+
+More detail: [Go guide](go/README.md) · [Java guide](java/README.md) · [Architecture](docs/ARCHITECTURE.md) · [Project explanation](PROJECT_EXPLANATION.md) · [Current status](STATUS.md) · [Checkpoint artifacts](models/README.md)
+
+## 🎨 Project visuals
+
+<p align="center">
+  <img src="image/tagline.svg" alt="Compress weights. Measure quality. Run locally." width="100%">
+</p>
